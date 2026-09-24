@@ -86,7 +86,7 @@ button:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 .lead{margin:0;font-size:16px;font-weight:700;text-wrap:balance}
 .muted{color:var(--muted)}
 .recipe{display:grid;gap:8px;width:min(100%,420px);padding:14px 18px 18px;border-radius:20px;background:#fff;color:var(--ink);box-shadow:0 12px 30px rgba(110,35,0,.3)}
-.recipe-head{margin:0;text-align:center;font-family:var(--display);font-style:italic;font-weight:900;font-size:26px;text-transform:uppercase;color:var(--navy);letter-spacing:.01em}
+.recipe-head{margin:0;text-align:center;font-family:var(--display);font-style:italic;font-weight:900;font-size:22px;line-height:1.05;text-wrap:balance;text-transform:uppercase;color:var(--navy);letter-spacing:.01em}
 .mix-row{display:flex;align-items:flex-end;justify-content:center;gap:clamp(10px,4vw,22px)}
 .mix-item{display:grid;justify-items:center;gap:6px}
 .mix-mg{font-family:var(--display);font-style:italic;font-weight:900;font-size:20px;color:var(--blue);line-height:1;text-transform:uppercase}
@@ -334,7 +334,7 @@ const CONFIG = {
   FALL_START_S: 4.0,            // segundos en atravesar el campo al comienzo
   FALL_END_S: 3.0,              // ... y al final
   EASY_CHIPS: 3,                // primeras fichas más accesibles
-  BASKET_WIDTH: 0.14,           // fracción del ancho del campo (cápsula recolectora)
+  BASKET_WIDTH: 0.21,           // fracción del ancho del campo (cápsula recolectora)
   MIN_SPAWN_GAP: 0.26,          // separación horizontal mínima entre fichas consecutivas
   KEY_SPEED: 1.35,              // anchos de campo por segundo con teclado
 
@@ -342,7 +342,7 @@ const CONFIG = {
   PENALTY_EXTRA: 0,             // fichas de un componente ya completo: no descuentan puntos
   TIME_BONUS_PER_SEC: 2,
   QUIZ_BONUS: 40,
-  // Opciones del Bonus Mega: la composición de la marca (editable)
+  // Opciones de los Puntos extra: la composición de la marca (editable)
   QUIZ_OPTIONS: [
     { label: "DHA 240 mg + EPA 360 mg", correct: true },
     { label: "DHA 360 mg + EPA 240 mg", correct: false },
@@ -355,7 +355,7 @@ const CONFIG = {
   TEXT: {
     instruction: "COMPLETÁ LA FÓRMULA SUPERIOR CIENTÍFICAMENTE COMPROBADA",
     timeNote: "Tenés 30 segundos. ¡Combiná con precisión!",
-    start: "¡A MEZCLAR!",
+    start: "JUGÁ AHORA",
     ctrlTouch: "Arrastrá el recipiente",
     ctrlDesktop: "Mové el mouse o usá ← →",
     extra: "¡Ese componente ya está completo!",
@@ -363,9 +363,9 @@ const CONFIG = {
     impurityHint: "Esquivá las impurezas: te restan puntos",
     winTitle: "¡FÓRMULA ÚNICA COMPLETADA!",
     loseTitle: "¡Probá otra mezcla!",
-    quizQ: "Bonus Mega: ¿cuál es la combinación de la marca?",
+    quizQ: "Puntos extra: ¿cuál es la combinación única de MEGA OMEGA 3?",
     quizRight: "¡La tenés clara!",
-    quizWrong: "Casi. La combinación de la marca es DHA 240 mg + EPA 360 mg.",
+    quizWrong: "Casi. La combinación única de MEGA OMEGA 3 es DHA 240 mg + EPA 360 mg.",
     replay: "VOLVER A JUGAR",
     retry: "VOLVER A INTENTAR",
     copy: "COPIAR MI RESULTADO",
@@ -388,6 +388,9 @@ const CONFIG = {
 };
 
 const need = (k) => CONFIG.COMPONENTS[k].target;
+const mgTotal = (k) => Number(CONFIG.COMPOSITION[k]) || 0;
+const mgPerChip = (k) => mgTotal(k) / need(k);
+const mgGot = (k, count) => Math.round(Math.min(count, need(k)) * mgPerChip(k));
 const TOTAL_CHIPS = CONFIG.ORDER.reduce((s, k) => s + need(k), 0);
 const FORMULA = `${need("DHA")} DHA + ${need("EPA")} EPA`;
 
@@ -605,14 +608,14 @@ function Territories() {
 function Counter({ k, count }) {
   const target = CONFIG.COMPONENTS[k].target;
   const done = count >= target;
-  return html`<div class=${`counter ${k} ${done ? "done" : ""}`} role="status" aria-label=${`${k}: ${count} de ${target} fichas`}>
+  return html`<div class=${`counter ${k} ${done ? "done" : ""}`} role="status" aria-label=${`${k}: ${mgGot(k, count)} de ${mgTotal(k)} ${CONFIG.COMPOSITION.unit}`}>
     <div class="counter-top">
       <span class=${"tag " + k}>${k}</span>
       ${done
         ? html`<span class="done-badge">${Icon.check} COMPLETO</span>`
         : html`<span class="slots">${Array.from({ length: target }, (_, i) => html`<span key=${i} class=${`slot ${k} ${i < count ? "on" : ""}`}></span>`)}</span>`}
     </div>
-    <div class="mg">${Math.min(count, target)} <em>/ ${target} fichas</em></div>
+    <div class="mg">${mgGot(k, count)} <em>/ ${mgTotal(k)} ${CONFIG.COMPOSITION.unit}</em></div>
     <div class=${"bar " + k}><i style=${{ width: (Math.min(count, target) / target) * 100 + "%" }}></i></div>
   </div>`;
 }
@@ -626,7 +629,7 @@ function Welcome({ onStart, record }) {
     <${Claim} />
     <p class="pill-white">${T.instruction}</p>
     <div class="recipe" aria-label="Tu mezcla">
-      <p class="recipe-head">Tu mezcla</p>
+      <p class="recipe-head">Llená la cápsula con el mix único</p>
       <div class="mix-row">
         ${CONFIG.ORDER.map((k, i) => html`
           ${i > 0 && html`<span key=${"p" + k} class="mix-plus">+</span>`}
@@ -674,7 +677,7 @@ function WinScreen({ data, onNext }) {
         <div class="score-row sum"><span>Puntaje</span><b>${data.total}</b></div>
       </div>
       <p class="note">${T.timeBonusNote}</p>
-      <button class="btn" onClick=${onNext}>BONUS MEGA →</button>
+      <button class="btn" onClick=${onNext}>PUNTOS EXTRA →</button>
     </div>
   </div>`;
 }
